@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:school_bus/screens/home_screen.dart';
+import 'package:get/get.dart';
+import 'screens/home_screen.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'School Bus Tracker',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: HomeScreen(),
       debugShowCheckedModeBanner: false,
+      home: HomeScreen(),
     );
   }
 }

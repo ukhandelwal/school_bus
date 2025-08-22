@@ -1,4 +1,3 @@
-
 import '../models/bus_model.dart';
 import '../models/route_model.dart';
 import '../models/stop_model.dart';
@@ -13,8 +12,8 @@ class MockDataService {
     );
   }
 
-  static Route getMockRoute() {
-    return Route(
+  static RouteModel getMockRoute() {
+    return RouteModel(
       id: 'custom_route_1',
       name: 'Jaipur Custom Route (from Google Maps)',
       busId: 'bus_101',

@@ -24,7 +24,7 @@ class LocationService {
       );
     }
 
-    return await Geolocator.getCurrentPosition(
+    return Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.bestForNavigation,
     );
   }
@@ -34,18 +34,8 @@ class LocationService {
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 5, // update every 5 meters
-        // Remove timeLimit; it stops stream after duration
+        // Do NOT set timeLimit; it will stop the stream
       ),
     );
   }
-
-  // Stream<Position> getLocationStream() {
-  //   return Geolocator.getPositionStream(
-  //     locationSettings: const LocationSettings(
-  //       accuracy: LocationAccuracy.bestForNavigation,
-  //       distanceFilter: 10, // Update every 10 meters
-  //       timeLimit: Duration(seconds: 5), // Optional: time limit
-  //     ),
-  //   );
-  // }
 }

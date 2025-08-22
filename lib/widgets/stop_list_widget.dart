@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../models/stop_model.dart';
 
 class StopListWidget extends StatelessWidget {
@@ -7,10 +6,10 @@ class StopListWidget extends StatelessWidget {
   final Function(Stop) onStopSelected;
 
   const StopListWidget({
-    Key? key,
+    super.key,
     required this.stops,
     required this.onStopSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,11 +17,11 @@ class StopListWidget extends StatelessWidget {
       height: 150,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(16),
           topRight: Radius.circular(16),
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 10,
@@ -32,7 +31,7 @@ class StopListWidget extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Padding(
+          const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
               'Bus Stops',
@@ -57,7 +56,6 @@ class StopListWidget extends StatelessWidget {
   Widget _buildStopCard(Stop stop) {
     Color statusColor;
     String statusText;
-
     switch (stop.status) {
       case StopStatus.completed:
         statusColor = Colors.grey;
@@ -81,8 +79,8 @@ class StopListWidget extends StatelessWidget {
       onTap: () => onStopSelected(stop),
       child: Container(
         width: 150,
-        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        padding: EdgeInsets.all(12),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: statusColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
@@ -93,15 +91,15 @@ class StopListWidget extends StatelessWidget {
           children: [
             Text(
               stop.name,
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               statusText,
               style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text('Students: ${stop.studentCount}'),
           ],
         ),
