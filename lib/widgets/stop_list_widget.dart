@@ -13,97 +13,121 @@ class StopListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 150,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              'Bus Stops',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: stops.length,
-              itemBuilder: (context, index) {
-                final stop = stops[index];
-                return _buildStopCard(stop);
-              },
-            ),
-          ),
-        ],
-      ),
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemCount: stops.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (context, index) => _StopChip(stop: stops[index], onTap: () => onStopSelected(stops[index])),
     );
   }
+}
 
-  Widget _buildStopCard(Stop stop) {
-    Color statusColor;
-    String statusText;
-    switch (stop.status) {
-      case StopStatus.completed:
-        statusColor = Colors.grey;
-        statusText = 'Completed';
-        break;
-      case StopStatus.current:
-        statusColor = Colors.orange;
-        statusText = 'Current';
-        break;
-      case StopStatus.next:
-        statusColor = Colors.green;
-        statusText = 'Next';
-        break;
-      case StopStatus.upcoming:
-        statusColor = Colors.blue;
-        statusText = 'Upcoming';
-        break;
-    }
+class _StopChip extends StatelessWidget {
+  final Stop stop;
+  final VoidCallback onTap;
 
-    return GestureDetector(
-      onTap: () => onStopSelected(stop),
+  const _StopChip({required this.stop, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(stop.status);
+    final icon = _statusIcon(stop.status);
+    final border = _statusBorder(stop.status);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
       child: Container(
-        width: 150,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        width: 200,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: statusColor, width: 2),
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border, width: 1.6),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              stop.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(icon, color: color),
             ),
-            const SizedBox(height: 4),
-            Text(
-              statusText,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(stop.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+                  const SizedBox(height: 4),
+                  Text(
+                    _statusText(stop.status),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text('Students: ${stop.studentCount}', style: const TextStyle(fontSize: 12)),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text('Students: ${stop.studentCount}'),
           ],
         ),
       ),
     );
+  }
+
+  String _statusText(StopStatus s) {
+    switch (s) {
+      case StopStatus.completed:
+        return 'Completed';
+      case StopStatus.current:
+        return 'Current';
+      case StopStatus.next:
+        return 'Next';
+      case StopStatus.upcoming:
+        return 'Upcoming';
+    }
+  }
+
+  IconData _statusIcon(StopStatus s) {
+    switch (s) {
+      case StopStatus.completed:
+        return Icons.check_circle;
+      case StopStatus.current:
+        return Icons.flag;
+      case StopStatus.next:
+        return Icons.navigate_next;
+      case StopStatus.upcoming:
+        return Icons.location_on;
+    }
+  }
+
+  Color _statusColor(StopStatus s) {
+    switch (s) {
+      case StopStatus.completed:
+        return Colors.grey;
+      case StopStatus.current:
+        return Colors.orange;
+      case StopStatus.next:
+        return Colors.green;
+      case StopStatus.upcoming:
+        return Colors.blue;
+    }
+  }
+
+  Color _statusBorder(StopStatus s) {
+    switch (s) {
+      case StopStatus.completed:
+        return Colors.grey.shade400;
+      case StopStatus.current:
+        return Colors.orange.shade400;
+      case StopStatus.next:
+        return Colors.green.shade400;
+      case StopStatus.upcoming:
+        return Colors.blue.shade400;
+    }
   }
 }

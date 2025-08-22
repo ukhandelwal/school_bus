@@ -11,17 +11,19 @@ import '../services/mock_data_service.dart';
 import '../services/routing_service.dart';
 
 class TripController extends GetxController {
-  // State
   final RxList<Stop> stops = <Stop>[].obs;
   final RxBool isTripActive = false.obs;
-  final Rx<LatLng> currentLocation = const LatLng(26.9239, 75.8267).obs; // Patrika Gate
-  final RxInt currentStopIndex = 1.obs; // start at second stop
+  final Rx<LatLng> currentLocation = const LatLng(26.9239, 75.8267).obs; // Patrika Gate default
+  final RxInt currentStopIndex = 1.obs;
   final RxList<LatLng> routePoints = <LatLng>[].obs;
   final RxBool isLoadingRoute = false.obs;
 
+  // Heading in degrees (0..360, 0 = North)
+  final RxDouble headingDeg = 0.0.obs;
+  LatLng? _lastLocation;
+
   final LocationService _locationService = LocationService();
   StreamSubscription<Position>? _locationSub;
-
   Timer? _routeDebounce;
 
   @override
@@ -47,10 +49,9 @@ class TripController extends GetxController {
     try {
       final pos = await _locationService.getCurrentLocation();
       currentLocation.value = LatLng(pos.latitude, pos.longitude);
+      _updateHeadingFromPosition(pos);
       _refreshRoute();
-    } catch (_) {
-      // keep default if error
-    }
+    } catch (_) {}
   }
 
   void startTrip() {
@@ -59,7 +60,12 @@ class TripController extends GetxController {
 
     _locationSub = _locationService.getLocationStream().listen((pos) {
       if (!isTripActive.value) return;
-      currentLocation.value = LatLng(pos.latitude, pos.longitude);
+
+      final newLoc = LatLng(pos.latitude, pos.longitude);
+      currentLocation.value = newLoc;
+
+      _updateHeadingFromPosition(pos, fallbackFromLast: true);
+
       _checkStopProximity();
       _debouncedRefreshRoute();
     }, onError: (_) {});
@@ -89,9 +95,7 @@ class TripController extends GetxController {
     for (int i = 0; i < stops.length; i++) {
       stops[i].status = i == 0 ? StopStatus.current : StopStatus.upcoming;
     }
-    if (stops.length > 1) {
-      stops[1].status = StopStatus.next;
-    }
+    if (stops.length > 1) stops[1].status = StopStatus.next;
     currentStopIndex.value = 0;
     stops.refresh();
   }
@@ -130,7 +134,6 @@ class TripController extends GetxController {
 
       if (distanceKm < AppConstants.stopProximityThreshold &&
           (stop.status == StopStatus.upcoming || stop.status == StopStatus.next)) {
-        // Promote statuses
         if (currentStopIndex.value >= 0 && currentStopIndex.value < stops.length) {
           stops[currentStopIndex.value].status = StopStatus.completed;
         }
@@ -152,25 +155,12 @@ class TripController extends GetxController {
     }
   }
 
-  double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
-    const double R = 6371.0;
-    final dLat = _degToRad(lat2 - lat1);
-    final dLon = _degToRad(lon2 - lon1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(_degToRad(lat1)) * cos(_degToRad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
-  }
-
-  double _degToRad(double deg) => deg * (pi / 180.0);
-
   void _debouncedRefreshRoute() {
     _routeDebounce?.cancel();
     _routeDebounce = Timer(const Duration(seconds: 3), _refreshRoute);
   }
 
   Future<void> _refreshRoute() async {
-    // Build waypoints: current location + remaining stops (current/next/upcoming)
     final remaining = stops.where((s) =>
     s.status == StopStatus.current ||
         s.status == StopStatus.next ||
@@ -191,4 +181,62 @@ class TripController extends GetxController {
     routePoints.assignAll(points);
     isLoadingRoute.value = false;
   }
+
+  // ----- Heading helpers -----
+
+  void _updateHeadingFromPosition(Position pos, {bool fallbackFromLast = false}) {
+    final newLoc = LatLng(pos.latitude, pos.longitude);
+
+    double newHeading = pos.heading; // degrees, -1 if not available
+    if (newHeading.isNaN || newHeading < 0.0 || newHeading == 0.0) {
+      if (fallbackFromLast && _lastLocation != null &&
+          (_lastLocation!.latitude != newLoc.latitude || _lastLocation!.longitude != newLoc.longitude)) {
+        newHeading = _bearingDegrees(_lastLocation!, newLoc);
+      }
+    }
+
+    final normalized = _normalizeDegrees(newHeading);
+    headingDeg.value = _smoothHeading(headingDeg.value, normalized);
+    _lastLocation = newLoc;
+  }
+
+  double _normalizeDegrees(double d) {
+    if (d.isNaN) return 0.0;
+    d = d % 360.0;
+    if (d < 0) d += 360.0;
+    return d;
+  }
+
+  // Smoothly interpolate heading to avoid jitter
+  double _smoothHeading(double prev, double next, {double alpha = 0.25}) {
+    double delta = ((next - prev + 540) % 360) - 180; // shortest angular distance
+    return (prev + alpha * delta + 360) % 360;
+  }
+
+  // Bearing from point A to B in degrees (0..360, 0 = North)
+  double _bearingDegrees(LatLng from, LatLng to) {
+    final lat1 = _degToRad(from.latitude);
+    final lat2 = _degToRad(to.latitude);
+    final dLon = _degToRad(to.longitude - from.longitude);
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+    final brng = atan2(y, x);
+    var deg = (brng * 180.0 / pi);
+    deg = (deg + 360.0) % 360.0;
+    return deg;
+  }
+
+  // ----- Math helpers -----
+
+  double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
+    const double R = 6371.0;
+    final dLat = _degToRad(lat2 - lat1);
+    final dLon = _degToRad(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degToRad(lat1)) * cos(_degToRad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  double _degToRad(double deg) => deg * (pi / 180.0);
 }
