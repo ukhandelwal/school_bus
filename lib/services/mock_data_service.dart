@@ -103,7 +103,7 @@ class MockDataService {
         ),
         Stop(
           id: 'stop_9',
-          name: 'Badi Chaupar',
+          name: 'AirPot',
           latitude: 26.8282742,
           longitude: 75.8056178,
           studentCount: 2,

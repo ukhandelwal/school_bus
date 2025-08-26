@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/stop_model.dart';
+import '../widgets/student_bottom_sheet.dart';
 
 class StopListWidget extends StatelessWidget {
   final List<Stop> stops;
@@ -18,7 +19,14 @@ class StopListWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       itemCount: stops.length,
       separatorBuilder: (_, __) => const SizedBox(width: 8),
-      itemBuilder: (context, index) => _StopChip(stop: stops[index], onTap: () => onStopSelected(stops[index])),
+      itemBuilder: (context, index) => _StopChip(
+        stop: stops[index],
+        onTap: () {
+          final stop = stops[index];
+          onStopSelected(stop); // keep existing flow
+          StudentBottomSheet.show(context, stop); // new bottom sheet
+        },
+      ),
     );
   }
 }
@@ -26,7 +34,6 @@ class StopListWidget extends StatelessWidget {
 class _StopChip extends StatelessWidget {
   final Stop stop;
   final VoidCallback onTap;
-
   const _StopChip({required this.stop, required this.onTap});
 
   @override
@@ -34,7 +41,6 @@ class _StopChip extends StatelessWidget {
     final color = _statusColor(stop.status);
     final icon = _statusIcon(stop.status);
     final border = _statusBorder(stop.status);
-
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -45,7 +51,9 @@ class _StopChip extends StatelessWidget {
           color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: border, width: 1.6),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))
+          ],
         ),
         child: Row(
           children: [

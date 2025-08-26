@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -32,14 +32,10 @@ class _HomeScreenState extends State<HomeScreen> {
               currentLocation: controller.currentLocation.value,
               routePoints: controller.routePoints,
               isLoadingRoute: controller.isLoadingRoute.value,
-              headingDeg: controller.headingDeg.value, // NEW
+              headingDeg: controller.headingDeg.value,
             );
           }),
-
-          // Top status banners
           _TopPills(),
-
-          // Bottom Glass Panel with Stops & Controls
           Align(
             alignment: Alignment.bottomCenter,
             child: _BottomGlassPanel(controller: controller),
@@ -70,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _TopPills extends StatelessWidget {
   _TopPills({super.key});
-
   final TripController controller = Get.find();
 
   @override
@@ -135,7 +130,6 @@ class _TopPills extends StatelessWidget {
 
 class _BottomGlassPanel extends StatelessWidget {
   final TripController controller;
-
   const _BottomGlassPanel({super.key, required this.controller});
 
   @override
@@ -158,7 +152,6 @@ class _BottomGlassPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header row
           Row(
             children: const [
               Icon(Icons.route, color: Colors.blue),
@@ -170,8 +163,6 @@ class _BottomGlassPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-
-          // Stops scroller
           SizedBox(
             height: 110,
             child: StopListWidget(
@@ -180,10 +171,8 @@ class _BottomGlassPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-
-          // Action row
           Obx(
-            () => _ActionRow(
+                () => _ActionRow(
               isTripActive: controller.isTripActive.value,
               onStart: controller.startTrip,
               onPause: controller.pauseTrip,
@@ -203,7 +192,6 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onPause;
   final VoidCallback onResume;
   final VoidCallback onStop;
-
   const _ActionRow({
     super.key,
     required this.isTripActive,
@@ -250,7 +238,7 @@ class _ActionRow extends StatelessWidget {
             ],
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Row(
           children: [
             _roundedButton(
