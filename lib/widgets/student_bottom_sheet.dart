@@ -4,6 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../controllers/trip_controller.dart';
 import '../models/stop_model.dart';
 import '../models/student_model.dart';
 
@@ -20,7 +24,6 @@ class StudentBottomSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => DraggableScrollableSheet(
         expand: false,
-        // 80% by default, can collapse to ~70% and expand up to 90%
         initialChildSize: 0.8,
         minChildSize: 0.7,
         maxChildSize: 0.9,
@@ -49,9 +52,10 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
       final lat = widget.stop.latitude;
       final lon = widget.stop.longitude;
       final url = Uri.parse(
-          'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lon');
+        'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lon',
+      );
       final res = await http.get(url, headers: {
-        'User-Agent': 'school_bus_tracker/1.0'
+        'User-Agent': 'school_bus_tracker/1.0',
       });
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -67,70 +71,147 @@ class _StudentBottomSheetState extends State<StudentBottomSheet> {
     }
   }
 
+  // Open Google Maps at coordinates
+  Future<void> _openInMaps(double lat, double lon) async {
+    Get.back();
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lon');
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) throw 'launch failed';
+    } catch (_) {
+      // fallback: try maps app scheme if available
+      final alt = Uri.parse('geo:$lat,$lon?q=$lat,$lon');
+      await launchUrl(alt, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _navigateTo(double lat, double lon) async {
+    Get.back();
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lon&travelmode=driving&dir_action=navigate',
+    );
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) throw 'launch failed';
+    } catch (_) {
+      final alt = Uri.parse('google.navigation:q=$lat,$lon&mode=d');
+      await launchUrl(alt, mode: LaunchMode.externalApplication);
+    }
+  }
+  //
+  // // Open Google Maps directions and start the in-app trip
+  // Future<void> _navigateTo(double lat, double lon) async {
+  //   final url =
+  //   Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lon&travelmode=driving');
+  //   if (await canLaunchUrl(url)) {
+  //     await launchUrl(url, mode: LaunchMode.externalApplication);
+  //   }
+  //   final controller = Get.isRegistered<TripController>() ? Get.find<TripController>() : null;
+  //   controller?.startTrip();
+  // }
+
   @override
   Widget build(BuildContext context) {
     final stop = widget.stop;
     final accent = Colors.blue;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12)],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          // drag handle
-          Container(
-            width: 48,
-            height: 5,
-            decoration: BoxDecoration(
-              color: Colors.black26,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Header: Stop name + status + coords
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _Header(stop: stop, accent: accent),
-          ),
-          const SizedBox(height: 12),
+    final media = MediaQuery.of(context);
+    final bottomInset = media.viewInsets.bottom;
 
-          // Map card with actions
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _MapCard(
-              stop: stop,
-              accent: accent,
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 200),
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12)],
+        ),
+        child: CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          slivers: [
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-          // Address block
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _AddressBlock(
-              address: _address,
-              loading: _loadingAddr,
-              lat: stop.latitude,
-              lon: stop.longitude,
-              accent: accent,
+            // Header
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(child: _Header(stop: stop, accent: accent)),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-          // Students section (expand)
-          Expanded(
-            child: _StudentsSection(
-              students: stop.students,
-              count: stop.studentCount > 0 ? stop.studentCount : stop.students.length,
-              accent: accent,
+            // Map card
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: _MapCard(
+                  stop: stop,
+                  accent: accent,
+                  onCopyCoords: () {
+                    Get.back();
+                    final text =
+                        '${stop.latitude.toStringAsFixed(6)}, ${stop.longitude.toStringAsFixed(6)}';
+                    Clipboard.setData(ClipboardData(text: text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Coordinates copied')),
+                    );
+                  },
+                  onNavigate: () => _navigateTo(stop.latitude, stop.longitude),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // Address block
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: _AddressBlock(
+                  address: _address,
+                  loading: _loadingAddr,
+                  lat: stop.latitude,
+                  lon: stop.longitude,
+                  accent: accent,
+                  onOpenMaps: () => _openInMaps(stop.latitude, stop.longitude),
+                  onCopy: () {
+                    final txt = _address ??
+                        '${stop.latitude.toStringAsFixed(6)}, ${stop.longitude.toStringAsFixed(6)}';
+                    Clipboard.setData(ClipboardData(text: txt));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Address copied')),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // Students section
+            SliverPadding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              sliver: SliverToBoxAdapter(
+                child: _StudentsSection(
+                  students: stop.students,
+                  count:
+                  stop.studentCount > 0 ? stop.studentCount : stop.students.length,
+                  accent: accent,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -163,20 +244,16 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(stop.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  )),
+              Text(
+                stop.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  _pill(
-                    label: _statusText(status),
-                    color: statusColor,
-                  ),
+                  _pill(label: _statusText(status), color: statusColor),
                   const SizedBox(width: 8),
                   _pill(
                     label:
@@ -241,8 +318,15 @@ class _Header extends StatelessWidget {
 class _MapCard extends StatelessWidget {
   final Stop stop;
   final Color accent;
+  final VoidCallback onCopyCoords;
+  final VoidCallback onNavigate;
 
-  const _MapCard({required this.stop, required this.accent});
+  const _MapCard({
+    required this.stop,
+    required this.accent,
+    required this.onCopyCoords,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +337,7 @@ class _MapCard extends StatelessWidget {
         child: Column(
           children: [
             SizedBox(
-              height: 240, // larger map viewport
+              height: 240,
               child: FlutterMap(
                 options: MapOptions(
                   initialCenter: LatLng(stop.latitude, stop.longitude),
@@ -286,28 +370,13 @@ class _MapCard extends StatelessWidget {
                   _chipButton(
                     icon: Icons.copy_rounded,
                     label: 'Copy coords',
-                    onTap: () {
-                      final text =
-                          '${stop.latitude.toStringAsFixed(6)}, ${stop.longitude.toStringAsFixed(6)}';
-                      Clipboard.setData(ClipboardData(text: text));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Coordinates copied')),
-                      );
-                    },
+                    onTap: onCopyCoords,
                   ),
                   const SizedBox(width: 8),
                   _chipButton(
                     icon: Icons.navigation_rounded,
                     label: 'Navigate',
-                    onTap: () {
-                      final lat = stop.latitude;
-                      final lon = stop.longitude;
-                      // Open in external map app via geo: or Google Maps URL
-                      // Use url_launcher if desired; keeping UI code only here.
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Open maps via url_launcher in app')),
-                      );
-                    },
+                    onTap: onNavigate,
                   ),
                   const Spacer(),
                   Row(
@@ -326,7 +395,8 @@ class _MapCard extends StatelessWidget {
     );
   }
 
-  Widget _chipButton({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _chipButton(
+      {required IconData icon, required String label, required VoidCallback onTap}) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -355,6 +425,8 @@ class _AddressBlock extends StatelessWidget {
   final double lat;
   final double lon;
   final Color accent;
+  final VoidCallback onOpenMaps;
+  final VoidCallback onCopy;
 
   const _AddressBlock({
     required this.address,
@@ -362,6 +434,8 @@ class _AddressBlock extends StatelessWidget {
     required this.lat,
     required this.lon,
     required this.accent,
+    required this.onOpenMaps,
+    required this.onCopy,
   });
 
   @override
@@ -404,24 +478,12 @@ class _AddressBlock extends StatelessWidget {
                       _addressAction(
                         icon: Icons.copy_rounded,
                         label: 'Copy',
-                        onTap: () {
-                          final txt = address ??
-                              '${lat.toStringAsFixed(6)}, ${lon.toStringAsFixed(6)}';
-                          Clipboard.setData(ClipboardData(text: txt));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Address copied')),
-                          );
-                        },
+                        onTap: onCopy,
                       ),
                       _addressAction(
                         icon: Icons.map_rounded,
                         label: 'Open in Maps',
-                        onTap: () {
-                          // Add url_launcher integration to open maps with lat/lon.
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Open maps via url_launcher in app')),
-                          );
-                        },
+                        onTap: onOpenMaps,
                       ),
                     ],
                   ),
@@ -482,70 +544,56 @@ class _StudentsSection extends StatelessWidget {
     );
 
     if (students.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            header,
-            const SizedBox(height: 8),
-            const Expanded(
-              child: Center(child: Text('No students assigned to this stop')),
-            ),
-          ],
-        ),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          header,
+          const SizedBox(height: 8),
+          const SizedBox(
+            height: 80,
+            child: Center(child: Text('No students assigned to this stop')),
+          ),
+        ],
       );
     }
 
-    // Top avatars grid (first 6), then list
-    final top = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: header,
-    );
-
     final avatarGrid = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, 0),
       child: Wrap(
         spacing: 10,
         runSpacing: 10,
-        children: students.take(6).map((s) {
-          return _avatar(s, accent);
-        }).toList(),
-      ),
-    );
-
-    final list = Expanded(
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: students.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (_, i) {
-          final s = students[i];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: accent.withOpacity(0.12),
-              child: Text(
-                _initials(s.name),
-                style: TextStyle(color: accent, fontWeight: FontWeight.bold),
-              ),
-            ),
-            title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: const Text('Student'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Optionally open student detail page or actions
-            },
-          );
-        },
+        children: students.take(6).map((s) => _avatar(s, accent)).toList(),
       ),
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        top,
+        header,
         avatarGrid,
-        // list,
+        // Add list if you want a detailed scrollable list below avatars:
+        // SizedBox(
+        //   height: 220,
+        //   child: ListView.separated(
+        //     itemCount: students.length,
+        //     separatorBuilder: (_, __) => const Divider(height: 1),
+        //     itemBuilder: (_, i) {
+        //       final s = students[i];
+        //       return ListTile(
+        //         leading: CircleAvatar(
+        //           backgroundColor: accent.withOpacity(0.12),
+        //           child: Text(
+        //             _initials(s.name),
+        //             style: TextStyle(color: accent, fontWeight: FontWeight.bold),
+        //           ),
+        //         ),
+        //         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+        //         subtitle: const Text('Student'),
+        //         trailing: const Icon(Icons.chevron_right),
+        //       );
+        //     },
+        //   ),
+        // ),
       ],
     );
   }
@@ -593,10 +641,9 @@ class _StudentsSection extends StatelessWidget {
   }
 
   String _initials(String name) {
-    final parts =
-    name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return '${parts.first.toUpperCase()}${parts.last.toUpperCase()}';
+    return '${parts.first[0].toUpperCase()}${parts.last[0].toUpperCase()}';
   }
 }
