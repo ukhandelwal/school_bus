@@ -29,15 +29,15 @@ class MockDataService {
       name: 'Jaipur Custom Route (from Google Maps)',
       busId: 'bus_101',
       stops: [
-        Stop(
-          id: 'stop_1',
-          name: 'Datansh Solutions Pvt Ltd',
-          latitude: 26.8520616,
-          longitude: 75.7947785,
-          studentCount: 2,
-          students: _sampleStudents(['Aarav', 'Siya']),
-          status: StopStatus.next,
-        ),
+        // Stop(
+        //   id: 'stop_1',
+        //   name: 'Datansh Solutions Pvt Ltd',
+        //   latitude: 26.8520616,
+        //   longitude: 75.7947785,
+        //   studentCount: 2,
+        //   students: _sampleStudents(['Aarav', 'Siya']),
+        //   status: StopStatus.next,
+        // ),
         Stop(
           id: 'stop_2',
           name: 'WTP Park, Malviya Nagar',

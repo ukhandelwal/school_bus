@@ -95,13 +95,13 @@ class _BusMapWidgetState extends State<BusMapWidget> {
           ),
         ),
 
-        if (widget.isLoadingRoute)
+     /*   if (widget.isLoadingRoute)
           const Positioned.fill(
             child: IgnorePointer(
               ignoring: true,
               child: Center(child: CircularProgressIndicator()),
             ),
-          ),
+          ),*/
       ],
     );
   }
